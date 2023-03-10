@@ -37,7 +37,18 @@ class Runner:
         self.result: t.List[Run] = []
 
     def __call__(self):
-        run_async(self._loop(self.compose_ops, self.options))
+        logger.info(f"Run parallel: {self.settings.parallel}")
+        if self.settings.parallel:
+            tasks = []
+            for ctr_settings in self.settings.controllers:
+                settings = self.settings.copy()
+                settings.controllers = [ctr_settings]
+                tasks.append(
+                    self._loop(ops=self.compose_ops, options=self.options, settings=settings),
+                )
+            run_async(tasks)
+        else:
+            self._loop(ops=self.compose_ops, options=self.options, settings=self.settings),
         return self.result
 
     def add_result(self, target, ops: Ops, result: OpsResult):
@@ -65,6 +76,7 @@ class Runner:
         self,
         ctr: Controller,
         ops: Ops,
+        settings: Settings,
         ctr_settings: CtrSettings,
         options: Namespace,
     ):
@@ -74,7 +86,7 @@ class Runner:
             ctr=ctr, model_names=model_names
         ):
             logger.debug((model_name, ops.__name__))
-            result = await ops(model=model, settings=self.settings, options=options)
+            result = await ops(model=model, settings=settings, options=options)
             self.add_result(ops=ops, result=result, target=ctr.controller_uuid)
 
     async def _loop_ctr(
@@ -110,8 +122,9 @@ class Runner:
         self,
         ops: t.Union[Ops, ComposeOps],
         options: Namespace,
+        settings: Settings,
     ):
-        for ctr_settings in self.settings.controllers:
+        for ctr_settings in settings.controllers:
             ctr = Controller()
             try:
                 # Get controller connection

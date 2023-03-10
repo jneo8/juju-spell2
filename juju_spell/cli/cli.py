@@ -24,7 +24,9 @@ class CtxObj(BaseModel):
 
 @app.callback()
 def common(
-    ctx: typer.Context, config: pathlib.Path = typer.Option(default=DEFAULT_CONFIG_PATH)
+    ctx: typer.Context,
+    config: pathlib.Path = typer.Option(DEFAULT_CONFIG_PATH),
+    parallel: bool = typer.Option(False),
 ) -> None:
     """Common Entry Point"""
     container = Container()
@@ -36,4 +38,5 @@ def common(
 
     ctx.ensure_object(CtxObj)
     ctx.obj.settings = container.settings()
+    ctx.obj.settings.parallel = parallel
     ctx.obj.pre_check()

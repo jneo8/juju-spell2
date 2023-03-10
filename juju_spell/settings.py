@@ -31,6 +31,7 @@ class Controller(BaseModel):
 
 class Settings(BaseSettings):
     controllers: t.List[Controller]
+    parallel: bool = False
 
 
 def get_settings(data: t.Dict[t.Any, t.Any]) -> Settings:
