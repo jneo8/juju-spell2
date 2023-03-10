@@ -14,21 +14,22 @@ from juju_spell.container import Container
 
 app = typer.Typer()
 
+
 class CtxObj(BaseModel):
     settings: t.Optional[Settings] = None
 
-    def pre_check(self):
+    def pre_check(self) -> None:
         assert self.settings
+
 
 @app.callback()
 def common(
-    ctx: typer.Context,
-    config: pathlib.Path = typer.Option(default=DEFAULT_CONFIG_PATH)
-):
+    ctx: typer.Context, config: pathlib.Path = typer.Option(default=DEFAULT_CONFIG_PATH)
+) -> None:
     """Common Entry Point"""
     container = Container()
     logger.info(f"load config file {config}")
-    if config.is_file and not os.stat(config).st_size == 0:
+    if config.is_file() and not os.stat(config).st_size == 0:
         container._settings.from_yaml(config)
     container.init_resources()
     container.wire(modules=[__name__])
@@ -36,9 +37,3 @@ def common(
     ctx.ensure_object(CtxObj)
     ctx.obj.settings = container.settings()
     ctx.obj.pre_check()
-
-
-
-@app.command("cmd1")
-def cmd1(ctx: typer.Context):
-    logger.debug(ctx.obj)

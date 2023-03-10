@@ -21,7 +21,7 @@ class Controller(BaseModel):
     ca_cert: str
 
     @property
-    def safe_output(self):
+    def safe_output(self) -> t.Dict[str, t.Any]:
         return {
             "uuid": self.uuid,
             "name": self.name,
@@ -30,7 +30,8 @@ class Controller(BaseModel):
 
 
 class Settings(BaseSettings):
-    controllers: t.List[Controller] = []
+    controllers: t.List[Controller]
 
-def get_settings(data):
+
+def get_settings(data: t.Dict[t.Any, t.Any]) -> Settings:
     return Settings(**data)
