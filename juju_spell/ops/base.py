@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from enum import Enum
+import traceback
 import typing as t
 import dataclasses
 
@@ -30,13 +31,11 @@ class Ops(metaclass=ABCMeta):
             output: t.Union[OpsOutput, bool] = await self._run(*args, **kwargs)
             return OpsResult(output=output)
         except Exception as err:
-            logger.warning(err)
+            logger.warning(traceback.format_exc())
             return OpsResult(err=err)
 
     @abstractmethod
-    async def _run(
-        self, ctr: Controller, *args: t.Any, **kwargs: t.Any
-    ) -> t.Union[OpsOutput, bool]:
+    async def _run(self, *args: t.Any, **kwargs: t.Any) -> t.Union[OpsOutput, bool]:
         pass
 
 

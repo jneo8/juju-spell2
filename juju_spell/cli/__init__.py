@@ -1,5 +1,6 @@
-from .cli import cmd1, app
+from .cli import app
 from .ping import ping
+from .model import model_config
 
 
-__all__ = ["cmd1", "app", "ping"]
+__all__ = ["app", "ping", "model_config"]

@@ -1,6 +1,7 @@
 from .base import Ops, OpsLevel, ComposeOps
 from .result import OpsResult, OpsOutput
 from .ping import PingOps
+from .model import ModelConfigOps
 
 
 __all__ = [
@@ -10,4 +11,5 @@ __all__ = [
     "ComposeOps",
     "OpsResult",
     "OpsOutput",
+    "ModelConfigOps",
 ]

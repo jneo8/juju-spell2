@@ -1,48 +1,117 @@
+import traceback
 import typing as t
-from juju_spell.ops import Ops, OpsLevel, ComposeOps
+import dataclasses
+import uuid
+from juju_spell.ops import Ops, OpsLevel, ComposeOps, OpsResult
 from loguru import logger
 
+from juju_spell.utils import Namespace
 from juju_spell.asyncio import run_async
 from juju.controller import Controller
+from juju.model import Model
 from juju_spell.settings import Settings
+from juju_spell.settings import Controller as CtrSettings
+
+
+@dataclasses.dataclass
+class Run:
+    target: uuid.UUID
+    ops: Ops
+    result: OpsResult
+    id: uuid.UUID = dataclasses.field(default_factory=lambda: str("abc"))
 
 
 class Runner:
-    @classmethod
-    def run(
-        cls,
-        compose_ops: ComposeOps,
+    def __init__(
+        self,
+        ops: t.Union[ComposeOps, Ops],
         settings: Settings,
+        options: t.Optional[Namespace] = None,
     ):
-        return run_async(cls._loop(compose_ops, settings))
+        if isinstance(ops, Ops):
+            ops = ComposeOps([ops])
+        assert isinstance(ops, ComposeOps)
+        self.compose_ops = ops
+        self.options = Namespace() if options is None else options
+        self.settings = settings
+        self.result: t.List[Run] = []
 
-    @classmethod
+    def __call__(self):
+        run_async(self._loop(self.compose_ops, self.options))
+        return self.result
+
+    def add_result(self, target, ops: Ops, result: OpsResult):
+        self.result.append(Run(target=target, ops=ops, result=result))
+
+    async def get_model_names(
+        self, ctr: Controller, models: t.Optional[t.List[str]] = []
+    ) -> t.List[str]:
+        exists_model_names = await ctr.list_models()
+        if len(models) <= 0:  # Filter not provides
+            logger.debug("Model filter not provided. Get all models from controller")
+            return exists_model_names
+        return set(models).intersection(exists_model_names)
+
+    async def model_async_generator(
+        self, ctr: Controller, model_names: t.List[str]
+    ) -> t.AsyncGenerator[t.Tuple[str, Model], None]:
+        for model_name in model_names:
+            model = await ctr.get_model(model_name)
+            logger.debug(model)
+            yield model_name, model
+            await model.disconnect()
+
+    async def _loop_model(
+        self,
+        ctr: Controller,
+        ops: Ops,
+        ctr_settings: CtrSettings,
+        options: Namespace,
+    ):
+        model_names = await self.get_model_names(ctr=ctr, models=options.models)
+
+        async for model_name, model in self.model_async_generator(
+            ctr=ctr, model_names=model_names
+        ):
+            logger.debug((model_name, ops.__name__))
+            result = await ops(model=model, settings=self.settings, options=options)
+            self.add_result(ops=ops, result=result, target=ctr.controller_uuid)
+
     async def _loop_ctr(
-        cls,
+        self,
         ctr: Controller,
         compose_ops: ComposeOps,
-        settings: Settings,
-        ctr_settings,
+        ctr_settings: CtrSettings,
+        options: Namespace,
     ):
         logger.info(compose_ops)
         # Iterate over ops
         for ops in compose_ops:
             logger.info((ops, ctr_settings.safe_output))
-            await ops(ctr=ctr)
             if isinstance(ops, ComposeOps):
-                await _run(controller=controller, compose_ops=compose_ops)
+                result = await self._loop_ctr(
+                    ctr=ctr,
+                    compose_ops=compose_ops,
+                    ctr_settings=ctr_settings,
+                    options=options,
+                )
             elif ops.level == OpsLevel.CONTROLLER:
                 result = await ops(ctr=ctr)
+                self.add_result(ops=ops, result=result, target=ctr.controller_uuid)
             elif ops.level == OpsLevel.MODEL:
-                pass  # TODO
+                await self._loop_model(
+                    ctr=ctr,
+                    ops=ops,
+                    ctr_settings=ctr_settings,
+                    options=options,
+                )
 
-    @classmethod
     async def _loop(
-        cls,
-        compose_ops: ComposeOps,
-        settings: Settings,
+        self,
+        ops: t.Union[Ops, ComposeOps],
+        options: Namespace,
     ):
-        for ctr_settings in settings.controllers:
+        for ctr_settings in self.settings.controllers:
             ctr = Controller()
             try:
                 # Get controller connection
@@ -52,10 +121,16 @@ class Runner:
                     endpoint=ctr_settings.endpoint,
                     cacert=ctr_settings.ca_cert,
                 )
-                await cls._loop_ctr(
-                    ctr=ctr, compose_ops=compose_ops, settings=settings, ctr_settings=ctr_settings
+                ctr._connector.controller_uuid = ctr_settings.uuid
+                ctr._connector.controller_name = ctr_settings.name
+
+                await self._loop_ctr(
+                    ctr=ctr,
+                    compose_ops=ops,
+                    ctr_settings=ctr_settings,
+                    options=options,
                 )
             except Exception as e:
-                logger.error(e)
+                logger.error(traceback.format_exc())
             finally:
                 await ctr.disconnect()
