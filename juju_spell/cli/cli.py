@@ -38,5 +38,5 @@ def common(
 
     ctx.ensure_object(CtxObj)
     ctx.obj.settings = container.settings()
-    ctx.obj.settings.parallel = parallel
+    ctx.obj.settings.worker.parallel = parallel
     ctx.obj.pre_check()

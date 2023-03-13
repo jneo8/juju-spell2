@@ -3,6 +3,7 @@ from enum import Enum
 import traceback
 import typing as t
 import dataclasses
+import itertools
 
 from loguru import logger
 from juju.controller import Controller
@@ -46,7 +47,7 @@ class ComposeOps(t.Generic[OPS]):
     list_ops: t.List[OPS] = []
 
     def __init__(self, *args: t.List[OPS]):
-        self.list_ops = list(*args)
+        self.list_ops = list(itertools.chain(*self.list_ops, *args))
 
     def __iter__(self) -> t.Iterator:
         for obj in self.list_ops:
