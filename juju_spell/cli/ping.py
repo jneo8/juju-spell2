@@ -9,15 +9,15 @@ from juju_spell.utils import Namespace
 from .cli import app
 
 
+def output_handler(result) -> None:
+    pass
+
+
 @app.command("ping")
 def ping(ctx: typer.Context) -> None:
     result = Runner(
         ComposeOps(PingOps, PingOps),
         ctx.obj.settings,
-        Namespace(models=[]),
-        output_handler,
+        Namespace(),
+        # output_handler,
     )()
-
-
-def output_handler(result) -> None:
-    logger.debug(result)

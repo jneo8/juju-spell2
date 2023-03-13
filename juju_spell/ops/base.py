@@ -27,7 +27,6 @@ class Ops(metaclass=ABCMeta):
         return self.__call(*self.args, **self.kwargs).__await__()
 
     async def __call(self, *args: t.Any, **kwargs: t.Any) -> OpsResult:
-        logger.info(self.__class__.__name__)
         try:
             output: t.Union[OpsOutput, bool] = await self._run(*args, **kwargs)
             return OpsResult(output=output)

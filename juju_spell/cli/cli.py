@@ -1,4 +1,5 @@
 import os
+import sys
 import pathlib
 import logging
 import typing as t
@@ -40,3 +41,13 @@ def common(
     ctx.obj.settings = container.settings()
     ctx.obj.settings.worker.parallel = parallel
     ctx.obj.pre_check()
+
+    logger_format = (
+        "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
+        "<level>{level: <8}</level> | "
+        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | "
+        "{extra} - <level>{message}</level>"
+    )
+    logger.configure(extra={})  # Default values
+    logger.remove()
+    logger.add(sys.stderr, format=logger_format)

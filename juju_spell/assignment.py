@@ -18,7 +18,7 @@ class RunResult:
     target: uuid.UUID
     ops: Ops
     result: OpsResult
-    id: uuid.UUID = dataclasses.field(default_factory=lambda: str("abc"))
+    id: uuid.UUID = dataclasses.field(default_factory=lambda: uuid.uuid4())
 
 
 class Worker:
@@ -32,18 +32,19 @@ class Worker:
         result_queue: asyncio.Queue,
         options: Namespace,
     ):
-        self._uuid = uuid.uuid4()
+        self._id = uuid.uuid4().hex
         self._settings = settings
         self._work_settings = WorkerSettings
         self._ops_queue = ops_queue
         self._result_queue = result_queue
         self._ctr: Controller
         self._options = options
-        logger.debug(f"Init worker {self.uuid} for ctr {self.ctr_uuid}")
+        self.logger = logger.bind(id=self._id, _type="worker")
+        self.logger.debug(f"Init worker for ctr {self.ctr_uuid}")
 
     @property
-    def uuid(self):
-        return self._uuid
+    def id(self):
+        return self._id
 
     @property
     def ctr_uuid(self):
@@ -64,44 +65,48 @@ class Worker:
             self._ctr._connector.controller_name = self._settings.name
             while True:
                 ops = await self._ops_queue.get()
-                logger.debug(f"Worker {self.uuid} {ops.__name__}")
-                result = await self.exec_ops(ops)
-                self._result_queue.put_nowait(ops)
+                self.logger.debug(f"Get ops {ops.__name__}")
+                results = await self._exec_ops(ops)
+                for result in results:
+                    self._result_queue.put_nowait(result)
                 self._ops_queue.task_done()
         except asyncio.CancelledError:
-            logger.info(f"Cancel worker {self.uuid}")
+            self.logger.debug(f"Cancel")
         except Exception as e:
-            logger.error(traceback.format_exc())
+            self.logger.error(traceback.format_exc())
         finally:
             await self._ctr.disconnect()
 
-    async def exec_ops(self, ops):
+    async def _exec_ops(self, ops) -> t.List[RunResult]:
         if ops.level == OpsLevel.CONTROLLER:
             result = await ops(ctr=self._ctr)
-            return result
+            return [self.format_run_result(target=self.ctr_uuid, ops=ops, result=result)]
         elif ops.level == OpsLevel.MODEL:
-            await self._loop_models(ops)
+            results = await self._loop_models(ops)
+            return results
 
     async def _loop_models(self, ops: Ops):
-        model_names = await self.get_model_names(models=self._options.models)
+        model_names = await self._get_model_names(models=self._options.models)
 
-        async for model_name, model in self.model_async_generator(model_names=model_names):
-            logger.debug((model_name, ops.__name__))
+        results = []
+        async for model_name, model in self._model_async_generator(model_names=model_names):
+            self.logger.debug((model_name, ops.__name__))
             result = await ops(model=model)
+            results.append(self.format_run_result(target=model.uuid, ops=ops, result=result))
+        return results
 
-    async def get_model_names(self, models: t.Optional[t.List[str]] = []) -> t.List[str]:
+    async def _get_model_names(self, models: t.Optional[t.List[str]] = []) -> t.List[str]:
         exists_model_names = await self._ctr.list_models()
         if len(models) <= 0:  # Filter not provides
-            logger.debug("Model filter not provided. Get all models from controller")
+            self.logger.debug("Model filter not provided. Get all models from controller")
             return exists_model_names
         return set(models).intersection(exists_model_names)
 
-    async def model_async_generator(
+    async def _model_async_generator(
         self, model_names: t.List[str]
     ) -> t.AsyncGenerator[t.Tuple[str, Model], None]:
         for model_name in model_names:
             model = await self._ctr.get_model(model_name)
-            logger.debug(model)
             yield model_name, model
             await model.disconnect()
 
@@ -109,35 +114,37 @@ class Worker:
     def format_run_result(target, ops: Ops, result: OpsResult):
         return RunResult(target=target, ops=ops, result=result)
 
-    def add_result(self, target, ops: Ops, result: OpsResult):
-        self.result.append(format_run_result(target=target, ops=ops, result=result))
-
 
 class Receiver:
     def __init__(
         self,
         queue: asyncio.Queue,
+        output_handler: t.Optional[t.Callable] = None,
     ):
-        self._uuid = uuid.uuid4()
+        self._id = uuid.uuid4().hex
         self._queue = queue
-        logger.debug(f"Init receiver {self.uuid}")
+        self._output_handler = output_handler
+        self.logger = logger.bind(id=self._id, _type="receiver")
+        self.logger.debug(f"Init receiver {self._id}")
 
     async def start(self):
-        logger.debug("Receiver Start")
-        n = 0
+        self.logger.debug("Receiver Start")
         try:
             while True:
-                n += 1
-                logger.debug(n)
                 result = await self._queue.get()
-                logger.debug(f"Receiver {self.uuid} {result.__name__}")
+                self.logger.debug(f"Get result: {result.id}")
+                assert isinstance(result, RunResult)
+                if self._output_handler:
+                    self._output_handler(result)
+                else:
+                    self.logger.debug(result)
                 self._queue.task_done()
         except asyncio.CancelledError:
-            pass
+            self.logger.debug("Cancel")
 
     @property
-    def uuid(self):
-        return self._uuid
+    def id(self):
+        return self._id
 
     @property
     def queue(self):
@@ -158,7 +165,7 @@ class Runner:
         self.compose_ops = ops
         self.options = Namespace() if options is None else options
         self.settings = settings
-        self.result: t.List[Run] = []
+        self.output_handler = output_handler
 
     def __call__(self):
         logger.info(f"Run parallel: {self.settings.worker.parallel}")
@@ -177,7 +184,7 @@ class Runner:
             )
             workers.append(worker)
             ops_queues.append(ops_queue)
-        receiver = Receiver(result_queue)
+        receiver = Receiver(result_queue, output_handler=self.output_handler)
 
         if self.settings.worker.parallel:
             asyncio.run(self._parallel(workers, receiver, ops_queues))
@@ -221,6 +228,3 @@ class Runner:
         await receiver.queue.join()
         receiver_task.cancel()
         await asyncio.gather(receiver_task)
-
-    def add_result(self, target, ops: Ops, result: OpsResult):
-        self.result.append(Run(target=target, ops=ops, result=result))
