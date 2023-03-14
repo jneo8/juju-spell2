@@ -19,10 +19,6 @@ class OpsLevel(Enum):
 class Ops(metaclass=ABCMeta):
     level: OpsLevel = OpsLevel.CONTROLLER
 
-    def __init__(self, *args: t.Any, **kwargs: t.Any):
-        self.args = args
-        self.kwargs = kwargs
-
     async def __call__(self, *args: t.Any, **kwargs: t.Any) -> OpsResult:
         try:
             output: t.Union[OpsOutput, bool] = await self._run(*args, **kwargs)

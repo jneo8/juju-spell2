@@ -8,7 +8,6 @@ from juju_spell.ops import Ops, OpsLevel, ComposeOps, OpsResult
 from loguru import logger
 
 from juju_spell.utils import Namespace
-from juju_spell.asyncio import run_async
 from juju.controller import Controller
 from juju.model import Model
 from juju_spell.settings import Settings, WorkerSettings, CtrSettings

@@ -3,7 +3,6 @@ from loguru import logger
 
 from juju_spell.ops import PingOps, ComposeOps
 from juju_spell.assignment import Runner
-from juju_spell.asyncio import run_async
 from juju_spell.utils import Namespace
 
 from .cli import app
