@@ -13,6 +13,9 @@ from juju.model import Model
 from juju_spell.settings import Settings, WorkerSettings, CtrSettings
 
 
+DONE = "DONE"
+
+
 @dataclasses.dataclass
 class RunResult:
     target: uuid.UUID
@@ -50,21 +53,26 @@ class Worker:
     def ctr_uuid(self):
         return self._settings.uuid
 
+    async def build_conn(self):
+        self._ctr = Controller()
+        await self._ctr._connector.connect(
+            username=self._settings.user,
+            password=self._settings.password,
+            endpoint=self._settings.endpoint,
+            cacert=self._settings.ca_cert,
+        )
+        self._ctr._connector.controller_uuid = self._settings.uuid
+        self._ctr._connector.controller_name = self._settings.name
+
     async def start(
         self,
     ):
-        self._ctr = Controller()
         try:
-            await self._ctr._connector.connect(
-                username=self._settings.user,
-                password=self._settings.password,
-                endpoint=self._settings.endpoint,
-                cacert=self._settings.ca_cert,
-            )
-            self._ctr._connector.controller_uuid = self._settings.uuid
-            self._ctr._connector.controller_name = self._settings.name
+            await self.build_conn()
             while True:
                 ops = await self._ops_queue.get()
+                if ops is DONE:  # End of queue
+                    break
                 self.logger.debug(f"Get ops {ops.__name__}")
                 results = await self._exec_ops(ops)
                 for result in results:
@@ -74,7 +82,15 @@ class Worker:
             self.logger.debug(f"Cancel")
         except Exception as e:
             self.logger.error(traceback.format_exc())
+            raise e
         finally:
+            self._result_queue.put_nowait(DONE)  # Signal to tell receiver finish.
+            await self._release_resource()
+            self.logger.info("Worker finish")
+
+    async def _release_resource(self):
+        logger.debug("Release resource")
+        if self._ctr:
             await self._ctr.disconnect()
 
     async def _exec_ops(self, ops) -> t.List[RunResult]:
@@ -127,12 +143,19 @@ class Receiver:
         self.logger = logger.bind(id=self._id, _type="receiver")
         self.logger.debug(f"Init receiver {self._id}")
 
-    async def start(self):
-        self.logger.debug("Receiver Start")
+    async def start(self, worker_num: int = 1):
+        self.logger.debug(f"Receiver Start, worker_num: {worker_num}")
+        done_worker = 0
         try:
             while True:
                 result = await self._queue.get()
-                self.logger.debug(f"Get result: {result.id}")
+                if result is DONE:
+                    done_worker += 1
+                    logger.debug(done_worker)
+                    if done_worker == worker_num:
+                        break
+                    else:
+                        continue
                 assert isinstance(result, RunResult)
                 if self._output_handler:
                     self._output_handler(result)
@@ -141,6 +164,8 @@ class Receiver:
                 self._queue.task_done()
         except asyncio.CancelledError:
             self.logger.debug("Cancel")
+        finally:
+            self.logger.debug("Receiver Finish")
 
     @property
     def id(self):
@@ -190,9 +215,12 @@ class Runner:
             asyncio.run(self._parallel(workers, receiver, ops_queues))
         if not self.settings.worker.parallel:
             asyncio.run(self._serial(workers, receiver, ops_queues))
+        for ops_queue in ops_queues:
+            logger.debug(ops_queue.qsize())
+        logger.debug(result_queue.qsize())
 
     async def _parallel(self, workers, receiver, ops_queues):
-        receiver_task = asyncio.create_task(receiver.start())
+        receiver_task = asyncio.create_task(receiver.start(len(workers)))
 
         worker_tasks = []
         for idx, worker in enumerate(workers):
@@ -201,16 +229,8 @@ class Runner:
             worker_tasks.append(worker_task)
             for ops in self.compose_ops:
                 queue.put_nowait(ops)
-
-        for queue in ops_queues:
-            await queue.join()
-        for worker_task in worker_tasks:
-            worker_task.cancel()
-        await asyncio.gather(*worker_tasks)
-
-        await receiver.queue.join()
-        receiver_task.cancel()
-        await asyncio.gather(receiver_task)
+            queue.put_nowait(DONE)  # The end of ops
+        await asyncio.gather(*worker_tasks, receiver_task)
 
     async def _serial(self, workers, receiver, ops_queues):
         receiver_task = asyncio.create_task(receiver.start())
@@ -221,10 +241,8 @@ class Runner:
 
             for ops in self.compose_ops:
                 queue.put_nowait(ops)
+            queue.put_nowait(DONE)  # The end of ops
 
-            await queue.join()
-            worker_task.cancel()
-            await asyncio.gather(worker_task)
-        await receiver.queue.join()
-        receiver_task.cancel()
+            await worker_task
+        await receiver_task
         await asyncio.gather(receiver_task)
