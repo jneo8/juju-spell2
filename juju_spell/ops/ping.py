@@ -15,4 +15,4 @@ class PingRunOps(Ops):
         return True
 
 
-PingOps: ComposeOps = ComposeOps([PingPreCheckOps, PingRunOps])
+PingOps: ComposeOps = ComposeOps([PingPreCheckOps(), PingRunOps()])

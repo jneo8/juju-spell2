@@ -1,3 +1,4 @@
+import contextvars
 import traceback
 import typing as t
 import dataclasses
@@ -14,6 +15,8 @@ from juju_spell.settings import Settings, WorkerSettings, CtrSettings
 
 
 DONE = "DONE"
+
+ctx_run_result = contextvars.ContextVar('run_result')
 
 
 @dataclasses.dataclass
@@ -73,7 +76,7 @@ class Worker:
                 ops = await self._ops_queue.get()
                 if ops is DONE:  # End of queue
                     break
-                self.logger.debug(f"Get ops {ops.__name__}")
+                self.logger.debug(f"Get ops {ops.__class__.__name__}")
                 results = await self._exec_ops(ops)
                 for result in results:
                     self._result_queue.put_nowait(result)
@@ -96,7 +99,9 @@ class Worker:
     async def _exec_ops(self, ops) -> t.List[RunResult]:
         if ops.level == OpsLevel.CONTROLLER:
             result = await ops(ctr=self._ctr)
-            return [self.format_run_result(target=self.ctr_uuid, ops=ops, result=result)]
+            run_result = self.format_run_result(target=self.ctr_uuid, ops=ops, result=result)
+            ctx_run_result.set(run_result)
+            return [run_result]
         elif ops.level == OpsLevel.MODEL:
             results = await self._loop_models(ops)
             return results
@@ -106,9 +111,11 @@ class Worker:
 
         results = []
         async for model_name, model in self._model_async_generator(model_names=model_names):
-            self.logger.debug((model_name, ops.__name__))
+            self.logger.debug((model_name, ops.__class__.__name__))
             result = await ops(model=model)
-            results.append(self.format_run_result(target=model.uuid, ops=ops, result=result))
+            run_result = self.format_run_result(target=self.ctr_uuid, ops=ops, result=result)
+            ctx_run_result.set(run_result)
+            results.append(run_result)
         return results
 
     async def _get_model_names(self, models: t.Optional[t.List[str]] = []) -> t.List[str]:
@@ -151,7 +158,6 @@ class Receiver:
                 result = await self._queue.get()
                 if result is DONE:
                     done_worker += 1
-                    logger.debug(done_worker)
                     if done_worker == worker_num:
                         break
                     else:

@@ -23,10 +23,7 @@ class Ops(metaclass=ABCMeta):
         self.args = args
         self.kwargs = kwargs
 
-    def __await__(self):  # type: ignore
-        return self.__call(*self.args, **self.kwargs).__await__()
-
-    async def __call(self, *args: t.Any, **kwargs: t.Any) -> OpsResult:
+    async def __call__(self, *args: t.Any, **kwargs: t.Any) -> OpsResult:
         try:
             output: t.Union[OpsOutput, bool] = await self._run(*args, **kwargs)
             return OpsResult(output=output)

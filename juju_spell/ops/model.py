@@ -19,4 +19,4 @@ class _ModelConfigOps(Ops):
         return ModelConfigOutput(config=result)
 
 
-ModelConfigOps: ComposeOps = ComposeOps([_ModelConfigOps])
+ModelConfigOps: ComposeOps = ComposeOps([_ModelConfigOps()])
