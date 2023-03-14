@@ -69,10 +69,15 @@ class Worker:
 
     async def start(
         self,
+        receiver_task: t.Optional[asyncio.Task] = None,
     ):
         try:
             await self.build_conn()
             while True:
+                # Cancel if receiver is Done.
+                # This is needed if run in serial mode
+                if receiver_task and receiver_task.done():
+                    break
                 ops = await self._ops_queue.get()
                 if ops is DONE:  # End of queue
                     break
@@ -243,7 +248,7 @@ class Runner:
 
         for idx, worker in enumerate(workers):
             queue = ops_queues[idx]
-            worker_task = asyncio.create_task(worker.start())
+            worker_task = asyncio.create_task(worker.start(receiver_task=receiver_task))
 
             for ops in self.compose_ops:
                 queue.put_nowait(ops)
