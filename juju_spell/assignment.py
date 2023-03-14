@@ -80,7 +80,7 @@ class Worker:
                 ops = await self._ops_queue.get()
                 if ops is DONE:  # End of queue
                     break
-                self.logger.debug(f"Get ops {ops.__class__.__name__}")
+                self.logger.debug(f"Get ops {ops.info}")
                 results = await self._exec_ops(ops)
                 for result in results:
                     self._result_queue.put_nowait(result)
@@ -96,7 +96,7 @@ class Worker:
             self.logger.info("Worker finish")
 
     async def _release_resource(self):
-        logger.debug("Release resource")
+        self.logger.debug("Release resource")
         if self._ctr:
             await self._ctr.disconnect()
 
@@ -115,7 +115,7 @@ class Worker:
 
         results = []
         async for model_name, model in self._model_async_generator(model_names=model_names):
-            self.logger.debug((model_name, ops.__class__.__name__))
+            self.logger.debug((model_name, ops.info))
             result = await ops(model=model)
             run_result = self.format_run_result(target=self.ctr_uuid, ops=ops, result=result)
             ctx_run_result.set(run_result)

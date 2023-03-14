@@ -31,6 +31,10 @@ class Ops(metaclass=ABCMeta):
     async def _run(self, *args: t.Any, **kwargs: t.Any) -> t.Union[OpsOutput, bool]:
         pass
 
+    @property
+    def info(self):
+        return self.__class__.__name__
+
 
 OPS = t.TypeVar("OPS", bound=t.Union[Ops, "ComposeOps"])
 

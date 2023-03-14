@@ -32,3 +32,7 @@ class ControllerWrapOps(Ops):
         func = getattr(ctr, self._cmd)
         result = await func(**self._options)
         return WrapOpsOutput(value=result)
+
+    @property
+    def info(self):
+        return self.__class__.__name__ + ":" + self._cmd
