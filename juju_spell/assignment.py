@@ -244,7 +244,7 @@ class Runner:
         await asyncio.gather(*worker_tasks, receiver_task)
 
     async def _serial(self, workers, receiver, ops_queues):
-        receiver_task = asyncio.create_task(receiver.start())
+        receiver_task = asyncio.create_task(receiver.start(len(workers)))
 
         for idx, worker in enumerate(workers):
             queue = ops_queues[idx]
@@ -256,4 +256,3 @@ class Runner:
 
             await worker_task
         await receiver_task
-        await asyncio.gather(receiver_task)
