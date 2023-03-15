@@ -91,7 +91,7 @@ class ComposeOps(t.Generic[OPS]):
     list_ops: t.List[OPS] = []
 
     def __init__(self, *args: t.List[OPS]):
-        self.list_ops = flatten([self.list_ops, *args])
+        self.list_ops = list(flatten([self.list_ops, *args]))
 
     def __iter__(self) -> t.Iterator:
         for obj in self.list_ops:

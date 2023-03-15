@@ -13,7 +13,7 @@ class Namespace:
 def flatten(items):
     """Flatten arbitrarily nested iterable items."""
     for i in items:
-        if hasattr(i, '__iter__'):
+        if hasattr(i, "__iter__"):
             for j in flatten(i):
                 yield j
         else:

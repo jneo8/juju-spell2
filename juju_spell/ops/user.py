@@ -97,7 +97,7 @@ class _CreateUserOps(Ops):
         overwrite: bool,
         *args: t.Any,
         **kwargs: t.Any,
-    ) -> bool:
+    ) -> User:
         user: t.Optional[User] = await ctr.get_user(username=username)
         if user is None:
             user = await ctr.add_user(
