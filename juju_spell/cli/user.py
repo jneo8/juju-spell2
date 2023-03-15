@@ -1,10 +1,11 @@
 import typer
 import typing as t
+import pprint
 from enum import Enum
 from loguru import logger
 
 from juju_spell.ops import AddUserOps, ComposeOps
-from juju_spell.assignment import Runner
+from juju_spell.assignment import Runner, RunResult
 from juju_spell.utils import Namespace
 from .cli import app
 
@@ -20,6 +21,17 @@ class ACL(str, Enum):
     admin = "admin"
 
 
+class _OutputHandler:
+    results: t.List[RunResult] = []
+
+    def call(self, result):
+        self.results.append(result)
+
+    def print(self):
+        for result in self.results:
+            logger.info(pprint.pformat(result))
+
+
 @app.command("add_user")
 def add_user(
     ctx: typer.Context,
@@ -32,6 +44,8 @@ def add_user(
 ) -> None:
     if display_name is None:
         display_name = user
+
+    output_handler = _OutputHandler()
     result = Runner(
         AddUserOps,
         ctx.obj.settings,
@@ -43,4 +57,6 @@ def add_user(
             acl=acl,
             models=models,
         ),
+        output_handler=output_handler.call,
     )()
+    output_handler.print()

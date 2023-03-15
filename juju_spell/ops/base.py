@@ -49,7 +49,7 @@ class Ops(metaclass=ABCMeta):
     async def __call__(self, *args: t.Any, **kwargs: t.Any) -> OpsResult:
         try:
             output: t.Union[OpsOutput, bool] = await self._run(*args, **kwargs)
-            if not isinstance(output, OpsOutput):
+            if not isinstance(output, OpsOutput) or not isinstance(output, bool):
                 output = DefaultOpsOutput(value=output)
             return OpsResult(output=output)
         except Exception as err:

@@ -22,7 +22,9 @@ ctx_run_result = contextvars.ContextVar('run_result', default=None)
 class RunResult:
     target: uuid.UUID
     ops: Ops
+    ops_info: str
     result: OpsResult
+    level: OpsLevel
     id: uuid.UUID = dataclasses.field(default_factory=lambda: uuid.uuid4())
 
     @property
@@ -120,7 +122,9 @@ class Worker(ModelFilterMixin):
                 ctr_settings=self._settings,
                 **vars(self._options),
             )
-            run_result = self.format_run_result(target=self.ctr_uuid, ops=ops, result=result)
+            run_result = self.format_run_result(
+                target=self.ctr_uuid, ops=ops, result=result, level=OpsLevel.CONTROLLER
+            )
             return [run_result]
         elif ops.level == OpsLevel.MODEL:
             results = await self._loop_models(ops)
@@ -139,13 +143,15 @@ class Worker(ModelFilterMixin):
                 ctr_settings=self._settings,
                 **vars(self._options),
             )
-            run_result = self.format_run_result(target=self.ctr_uuid, ops=ops, result=result)
+            run_result = self.format_run_result(
+                target=self.ctr_uuid, ops=ops, result=result, level=OpsLevel.MODEL
+            )
             results.append(run_result)
         return results
 
     @staticmethod
-    def format_run_result(target, ops: Ops, result: OpsResult):
-        return RunResult(target=target, ops=ops, result=result)
+    def format_run_result(target, ops: Ops, result: OpsResult, level: OpsLevel):
+        return RunResult(target=target, ops=ops, ops_info=ops.info, result=result, level=level)
 
 
 class Receiver:
@@ -231,9 +237,11 @@ class Runner:
             asyncio.run(self._parallel(workers, receiver, ops_queues))
         if not self.settings.worker.parallel:
             asyncio.run(self._serial(workers, receiver, ops_queues))
-        for ops_queue in ops_queues:
-            logger.debug(ops_queue.qsize())
-        logger.debug(result_queue.qsize())
+
+        # Unprocessed jobs
+        for worker, ops_queue in zip(workers, ops_queues):
+            logger.debug(f"Unprocessed jobs in worker {worker.id}: {ops_queue.qsize()}")
+        logger.debug(f"Unprocessed jobs in receiver {receiver.id}: {result_queue.qsize()}")
 
     async def _parallel(self, workers, receiver, ops_queues):
         receiver_task = asyncio.create_task(receiver.start(len(workers)))
