@@ -1,12 +1,8 @@
-import contextvars
-import dataclasses
-import itertools
 import traceback
 import typing as t
 from abc import ABCMeta, abstractmethod
 from enum import Enum
 
-from juju.controller import Controller
 from loguru import logger
 
 from juju_spell.utils import flatten

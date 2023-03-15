@@ -6,7 +6,6 @@ import uuid
 from contextvars import ContextVar
 
 from juju.controller import Controller
-from juju.model import Model
 from loguru import logger
 
 from juju_spell.ops import ComposeOps, Ops, OpsLevel, OpsResult
@@ -102,7 +101,7 @@ class Worker(ModelFilterMixin):
                     break
                 self._ops_queue.task_done()
         except asyncio.CancelledError:
-            self.logger.debug(f"Cancel")
+            self.logger.debug("Cancel")
         except Exception as e:
             self.logger.error(traceback.format_exc())
             raise e

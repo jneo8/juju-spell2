@@ -7,6 +7,8 @@ run:  ## Run
 ##@ Lint
 
 lint:  ## Run linter
+	poetry run pflake8
+	poetry run pylint --recursive=y .
 	poetry run black --check --diff --color .
 	poetry run mypy .
 	poetry run isort --check --diff --color .

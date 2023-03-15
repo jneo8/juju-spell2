@@ -2,10 +2,9 @@ import typing as t
 from enum import Enum
 
 import typer
-from loguru import logger
 
 from juju_spell.assignment import Runner
-from juju_spell.ops import AddUserOps, ComposeOps
+from juju_spell.ops import AddUserOps
 from juju_spell.utils import Namespace
 
 from .cli import app
@@ -37,7 +36,7 @@ def add_user(
         display_name = user
 
     output_handler = OutputHandler()
-    result = Runner(
+    Runner(
         AddUserOps,
         ctx.obj.settings,
         Namespace(

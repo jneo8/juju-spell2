@@ -8,7 +8,7 @@ from loguru import logger
 
 from juju_spell.errors import JujuSpellError
 from juju_spell.settings import CtrSettings
-from juju_spell.utils import ModelFilterMixin, Namespace
+from juju_spell.utils import ModelFilterMixin
 
 from .base import ComposeOps, Ops
 from .controller import ControllerWrapOps

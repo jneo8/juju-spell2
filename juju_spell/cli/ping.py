@@ -1,7 +1,7 @@
 import typer
 
 from juju_spell.assignment import Runner
-from juju_spell.ops import ComposeOps, PingOps
+from juju_spell.ops import PingOps
 from juju_spell.utils import Namespace
 
 from .cli import app
@@ -11,7 +11,7 @@ from .output import OutputHandler
 @app.command("ping")
 def ping(ctx: typer.Context) -> None:
     output_handler = OutputHandler()
-    result = Runner(
+    Runner(
         PingOps,
         ctx.obj.settings,
         Namespace(),

@@ -1,12 +1,11 @@
 import typing as t
 
 from juju.controller import Controller
-from loguru import logger
 
 from .base import Ops
 from .result import DefaultOpsOutput, OpsOutput
 
-__all__ = ["WrapOpsOutput", "ControllerWrapOps"]
+__all__ = ["ControllerWrapOps"]
 
 
 class ControllerWrapOps(Ops):

@@ -1,5 +1,4 @@
 import typer
-from loguru import logger
 
 from juju_spell.assignment import Runner
 from juju_spell.ops import ComposeOps, ControllerWrapOps
@@ -10,7 +9,7 @@ from .cli import app
 
 @app.command("example_controller_wraps")
 def example_controller_wraps(ctx: typer.Context) -> None:
-    result = Runner(
+    Runner(
         ComposeOps(
             [
                 ControllerWrapOps(cmd="list_models"),

@@ -1,10 +1,7 @@
-import logging
-import os
 import pathlib
 import typing as t
 
-from loguru import logger
-from pydantic import BaseModel, BaseSettings, validator
+from pydantic import BaseModel, BaseSettings
 
 BASE_DIR = pathlib.Path(__file__).parent
 DEFAULT_CONFIG_DIR = BASE_DIR.parent
