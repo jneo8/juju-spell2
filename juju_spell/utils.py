@@ -21,7 +21,7 @@ def flatten(items):
 
 
 class ModelFilterMixin:
-    async def _get_model_names(
+    async def get_model_names(
         self, ctr: Controller, models: t.Optional[t.List[str]] = []
     ) -> t.List[str]:
         exists_model_names = await ctr.list_models()
@@ -29,9 +29,10 @@ class ModelFilterMixin:
             return exists_model_names
         return set(models).intersection(exists_model_names)
 
-    async def _model_async_generator(
-        self, ctr: Controller, model_names: t.List[str]
+    async def model_async_generator(
+        self, ctr: Controller, models: t.List[str]
     ) -> t.AsyncGenerator[t.Tuple[str, Model], None]:
+        model_names = await self.get_model_names(ctr=ctr, models=models)
         for model_name in model_names:
             model = await ctr.get_model(model_name)
             yield model_name, model

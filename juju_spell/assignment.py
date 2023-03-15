@@ -127,11 +127,9 @@ class Worker(ModelFilterMixin):
             return results
 
     async def _loop_models(self, ops: Ops):
-        model_names = await self._get_model_names(models=self._options.models, ctr=self._ctr)
-
         results = []
         async for model_name, model in self._model_async_generator(
-            model_names=model_names, ctr=self._ctr
+            models=self._options.models, ctr=self._ctr
         ):
             self.logger.debug((model_name, ops.info))
             result = await ops(

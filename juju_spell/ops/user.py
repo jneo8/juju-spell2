@@ -76,9 +76,7 @@ class _GrantModelOps(Ops, ModelFilterMixin):
         **kwargs: t.Any,
     ) -> bool:
         acl = self.get_model_acl(acl)
-        async for _, model in self._model_async_generator(
-            model_names=await self._get_model_names(ctr=ctr, models=models), ctr=ctr
-        ):
+        async for _, model in self.model_async_generator(ctr=ctr, models=models):
             try:
                 await ctr.grant_model(username=username, model_uuid=model.uuid, acl=acl)
             except JujuError as err:
