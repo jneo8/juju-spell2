@@ -1,8 +1,9 @@
 from .base import Ops, OpsLevel, ComposeOps
-from .result import OpsResult, OpsOutput
+from .result import OpsResult, OpsOutput, DefaultOpsOutput
 from .ping import PingOps
 from .model import ModelConfigOps
-from .controller import WrapOpsOutput, ControllerWrapOps
+from .controller import ControllerWrapOps
+from .user import AddUserOps
 
 
 __all__ = [
@@ -12,7 +13,8 @@ __all__ = [
     "ComposeOps",
     "OpsResult",
     "OpsOutput",
+    "DefaultOpsOutput",
     "ModelConfigOps",
-    "WrapOpsOutput",
     "ControllerWrapOps",
+    "AddUserOps",
 ]

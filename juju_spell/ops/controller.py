@@ -1,20 +1,14 @@
 import typing as t
-import dataclasses
 
 from loguru import logger
 
 from juju.controller import Controller
 
 from .base import Ops
-from .result import OpsOutput
+from .result import OpsOutput, DefaultOpsOutput
 
 
 __all__ = ["WrapOpsOutput", "ControllerWrapOps"]
-
-
-@dataclasses.dataclass(frozen=True)
-class WrapOpsOutput(OpsOutput):
-    value: t.Any
 
 
 class ControllerWrapOps(Ops):
@@ -22,17 +16,22 @@ class ControllerWrapOps(Ops):
         self,
         cmd: str,
         *args,
-        options: t.Dict[str, t.Any] = {},
+        allow_options: t.List[str] = [],
         **kwargs,
     ):
+        super().__init__(*args, **kwargs)
         self._cmd = cmd
-        self._options = options
+        self._allow_options = allow_options
 
     async def _run(self, ctr: Controller, *args: t.Any, **kwargs: t.Any) -> bool:
+        options = {}
+        for key in self._allow_options:
+            if kwargs.get(key):
+                options[key] = kwargs.get(key)
         func = getattr(ctr, self._cmd)
-        result = await func(**self._options)
-        return WrapOpsOutput(value=result)
+        result = await func(**options)
+        return DefaultOpsOutput(value=result)
 
     @property
     def info(self):
-        return self.__class__.__name__ + ":" + self._cmd
+        return self.__class__.__name__ + ":" + self._cmd if self._name is None else self._name

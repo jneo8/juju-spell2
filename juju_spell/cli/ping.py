@@ -15,7 +15,7 @@ def output_handler(result) -> None:
 @app.command("ping")
 def ping(ctx: typer.Context) -> None:
     result = Runner(
-        ComposeOps(PingOps, PingOps),
+        ComposeOps([PingOps, PingOps]),
         ctx.obj.settings,
         Namespace(),
         # output_handler,

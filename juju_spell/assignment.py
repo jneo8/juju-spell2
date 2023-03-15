@@ -7,7 +7,7 @@ import uuid
 from juju_spell.ops import Ops, OpsLevel, ComposeOps, OpsResult
 from loguru import logger
 
-from juju_spell.utils import Namespace
+from juju_spell.utils import Namespace, ModelFilterMixin
 from juju.controller import Controller
 from juju.model import Model
 from juju_spell.settings import Settings, WorkerSettings, CtrSettings
@@ -15,7 +15,7 @@ from juju_spell.settings import Settings, WorkerSettings, CtrSettings
 
 DONE = "DONE"
 
-ctx_run_result = contextvars.ContextVar('run_result')
+ctx_run_result = contextvars.ContextVar('run_result', default=None)
 
 
 @dataclasses.dataclass
@@ -25,8 +25,14 @@ class RunResult:
     result: OpsResult
     id: uuid.UUID = dataclasses.field(default_factory=lambda: uuid.uuid4())
 
+    @property
+    def success(self) -> bool:
+        if self.ops.must_success and not self.result.success:
+            return False
+        return True
 
-class Worker:
+
+class Worker(ModelFilterMixin):
     """Run worker for single controller."""
 
     def __init__(
@@ -77,13 +83,19 @@ class Worker:
                 # This is needed if run in serial mode
                 if receiver_task and receiver_task.done():
                     break
+                # Get next ops
                 ops = await self._ops_queue.get()
                 if ops is DONE:  # End of queue
                     break
                 self.logger.debug(f"Get ops {ops.info}")
+                # Execute Ops
                 results = await self._exec_ops(ops)
                 for result in results:
                     self._result_queue.put_nowait(result)
+                ctx_run_result.set(results)
+                # All the run must succcess, else break worker loop
+                if not all(result.success for result in results):
+                    break
                 self._ops_queue.task_done()
         except asyncio.CancelledError:
             self.logger.debug(f"Cancel")
@@ -102,40 +114,36 @@ class Worker:
 
     async def _exec_ops(self, ops) -> t.List[RunResult]:
         if ops.level == OpsLevel.CONTROLLER:
-            result = await ops(ctr=self._ctr)
+            result = await ops(
+                ctr=self._ctr,
+                ctx=ctx_run_result,
+                ctr_settings=self._settings,
+                **vars(self._options),
+            )
             run_result = self.format_run_result(target=self.ctr_uuid, ops=ops, result=result)
-            ctx_run_result.set(run_result)
             return [run_result]
         elif ops.level == OpsLevel.MODEL:
             results = await self._loop_models(ops)
             return results
 
     async def _loop_models(self, ops: Ops):
-        model_names = await self._get_model_names(models=self._options.models)
+        model_names = await self._get_model_names(models=self._options.models, ctr=self._ctr)
 
         results = []
-        async for model_name, model in self._model_async_generator(model_names=model_names):
+        async for model_name, model in self._model_async_generator(
+            model_names=model_names, ctr=self._ctr
+        ):
             self.logger.debug((model_name, ops.info))
-            result = await ops(model=model)
+            result = await ops(
+                ctr=self._ctr,
+                ctx=ctx_run_result,
+                model=model,
+                ctr_settings=self._settings,
+                **vars(self._options),
+            )
             run_result = self.format_run_result(target=self.ctr_uuid, ops=ops, result=result)
-            ctx_run_result.set(run_result)
             results.append(run_result)
         return results
-
-    async def _get_model_names(self, models: t.Optional[t.List[str]] = []) -> t.List[str]:
-        exists_model_names = await self._ctr.list_models()
-        if len(models) <= 0:  # Filter not provides
-            self.logger.debug("Model filter not provided. Get all models from controller")
-            return exists_model_names
-        return set(models).intersection(exists_model_names)
-
-    async def _model_async_generator(
-        self, model_names: t.List[str]
-    ) -> t.AsyncGenerator[t.Tuple[str, Model], None]:
-        for model_name in model_names:
-            model = await self._ctr.get_model(model_name)
-            yield model_name, model
-            await model.disconnect()
 
     @staticmethod
     def format_run_result(target, ops: Ops, result: OpsResult):
