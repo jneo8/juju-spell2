@@ -1,16 +1,17 @@
-from abc import ABCMeta, abstractmethod
-from enum import Enum
 import contextvars
-import traceback
-import typing as t
 import dataclasses
 import itertools
+import traceback
+import typing as t
+from abc import ABCMeta, abstractmethod
+from enum import Enum
 
-from loguru import logger
 from juju.controller import Controller
+from loguru import logger
+
 from juju_spell.utils import flatten
 
-from .result import OpsResult, OpsOutput, DefaultOpsOutput
+from .result import DefaultOpsOutput, OpsOutput, OpsResult
 
 
 class OpsLevel(Enum):

@@ -3,8 +3,8 @@ import typing as t
 import typer
 from loguru import logger
 
-from juju_spell.ops import ModelConfigOps
 from juju_spell.assignment import Runner
+from juju_spell.ops import ModelConfigOps
 from juju_spell.utils import Namespace
 
 from .cli import app

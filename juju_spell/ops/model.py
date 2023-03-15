@@ -1,8 +1,10 @@
-import typing as t
 import dataclasses
+import typing as t
+
 from juju.model import Model
 from loguru import logger
-from .base import Ops, ComposeOps, OpsLevel
+
+from .base import ComposeOps, Ops, OpsLevel
 from .result import OpsOutput
 
 

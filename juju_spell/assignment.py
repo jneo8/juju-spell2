@@ -1,17 +1,17 @@
-from contextvars import ContextVar
+import asyncio
+import dataclasses
 import traceback
 import typing as t
-import dataclasses
-import asyncio
 import uuid
-from juju_spell.ops import Ops, OpsLevel, ComposeOps, OpsResult
-from loguru import logger
+from contextvars import ContextVar
 
-from juju_spell.utils import Namespace, ModelFilterMixin
 from juju.controller import Controller
 from juju.model import Model
-from juju_spell.settings import Settings, WorkerSettings, CtrSettings
+from loguru import logger
 
+from juju_spell.ops import ComposeOps, Ops, OpsLevel, OpsResult
+from juju_spell.settings import CtrSettings, Settings, WorkerSettings
+from juju_spell.utils import ModelFilterMixin, Namespace
 
 DONE = "DONE"
 

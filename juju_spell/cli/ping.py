@@ -1,7 +1,7 @@
 import typer
 
-from juju_spell.ops import PingOps, ComposeOps
 from juju_spell.assignment import Runner
+from juju_spell.ops import ComposeOps, PingOps
 from juju_spell.utils import Namespace
 
 from .cli import app

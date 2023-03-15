@@ -1,15 +1,16 @@
 """Ops for user."""
 import typing as t
 
-from loguru import logger
 from juju.controller import Controller
-from juju.user import User
 from juju.errors import JujuError
+from juju.user import User
+from loguru import logger
 
-from juju_spell.settings import CtrSettings
-from juju_spell.utils import Namespace, ModelFilterMixin
 from juju_spell.errors import JujuSpellError
-from .base import Ops, ComposeOps
+from juju_spell.settings import CtrSettings
+from juju_spell.utils import ModelFilterMixin, Namespace
+
+from .base import ComposeOps, Ops
 from .controller import ControllerWrapOps
 
 

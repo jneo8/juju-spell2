@@ -1,6 +1,6 @@
 import typing as t
-from types import SimpleNamespace
 from collections.abc import Generator
+from types import SimpleNamespace
 
 from juju.controller import Controller
 from juju.model import Model

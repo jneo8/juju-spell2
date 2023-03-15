@@ -1,17 +1,16 @@
-import os
-import sys
-import pathlib
 import logging
+import os
+import pathlib
+import sys
 import typing as t
 
 import typer
-from loguru import logger
 from dependency_injector.wiring import Provide, inject
+from loguru import logger
 from pydantic import BaseModel
-from juju_spell.container import Container
-from juju_spell.settings import Settings, DEFAULT_CONFIG_PATH
-from juju_spell.container import Container
 
+from juju_spell.container import Container
+from juju_spell.settings import DEFAULT_CONFIG_PATH, Settings
 
 app = typer.Typer()
 

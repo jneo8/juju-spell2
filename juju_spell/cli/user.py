@@ -1,11 +1,13 @@
-import typer
 import typing as t
 from enum import Enum
+
+import typer
 from loguru import logger
 
-from juju_spell.ops import AddUserOps, ComposeOps
 from juju_spell.assignment import Runner
+from juju_spell.ops import AddUserOps, ComposeOps
 from juju_spell.utils import Namespace
+
 from .cli import app
 from .output import OutputHandler
 

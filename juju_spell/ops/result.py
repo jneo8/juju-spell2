@@ -1,5 +1,5 @@
-import typing as t
 import dataclasses
+import typing as t
 
 
 @t.runtime_checkable
