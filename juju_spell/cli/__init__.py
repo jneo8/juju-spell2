@@ -1,3 +1,4 @@
+"""Init."""
 from .cli import app
 from .controller import example_controller_wraps
 from .model import model_config

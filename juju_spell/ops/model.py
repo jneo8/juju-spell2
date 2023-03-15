@@ -1,3 +1,4 @@
+"""Model Operations."""
 import dataclasses
 import typing as t
 
@@ -9,7 +10,9 @@ from .result import OpsOutput
 
 @dataclasses.dataclass(frozen=True)
 class ModelConfigOutput(OpsOutput):
-    config: t.Dict[str, t.Any]
+    """Output for ModelConfigOps."""
+
+    config: dict[str, t.Any]
 
 
 class _ModelConfigOps(Ops):

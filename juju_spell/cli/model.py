@@ -1,5 +1,4 @@
-import typing as t
-
+"""Model relate clis."""
 import typer
 from loguru import logger
 
@@ -11,10 +10,8 @@ from .cli import app
 
 
 @app.command("model_config")
-def model_config(
-    ctx: typer.Context,
-    models: t.List[str] = [],
-) -> None:
+def model_config(ctx: typer.Context, models: list[str] = typer.Option([])) -> None:
+    """Get models' config."""
     result = Runner(
         ModelConfigOps,
         ctx.obj.settings,

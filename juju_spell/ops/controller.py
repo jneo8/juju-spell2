@@ -1,3 +1,4 @@
+"""Controller Operations."""
 import typing as t
 
 from juju.controller import Controller
@@ -9,8 +10,14 @@ __all__ = ["ControllerWrapOps"]
 
 
 class ControllerWrapOps(Ops):
-    def __init__(
-        self, cmd: str, *args: t.Any, allow_options: t.List[str] = [], **kwargs: t.Any
+    """Wrapper ops to call controller method directly."""
+
+    def __init__(  # pylint: disable=dangerous-default-value
+        self,
+        cmd: str,
+        *args: t.Any,
+        allow_options: list[str] = [],
+        **kwargs: t.Any,
     ) -> None:
         super().__init__(*args, **kwargs)
         self._cmd = cmd
