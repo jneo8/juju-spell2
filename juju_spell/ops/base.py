@@ -59,28 +59,27 @@ class Ops(metaclass=ABCMeta):
     @abstractmethod
     async def _run(
         self,
-        ctx: contextvars.ContextVar,
         *args: t.Any,
         **kwargs: t.Any,
-    ) -> t.Union[OpsOutput, bool]:
+    ) -> t.Union[OpsOutput, bool, t.Any]:
         pass
 
     @property
-    def info(self):
+    def info(self) -> str:
         return self._name if self._name is not None else self.__class__.__name__
 
     @property
-    def level(self):
+    def level(self) -> OpsLevel:
         return self._level
 
     @property
-    def must_success(self):
+    def must_success(self) -> bool:
         if self._type == OpsType.PRECHECK:
             return True
         return self._must_success
 
     @property
-    def type_(self):
+    def type_(self) -> OpsType:
         return self._type
 
 

@@ -8,10 +8,6 @@ from .cli import app
 from .output import OutputHandler
 
 
-def output_handler(result) -> None:
-    pass
-
-
 @app.command("ping")
 def ping(ctx: typer.Context) -> None:
     output_handler = OutputHandler()

@@ -13,17 +13,13 @@ __all__ = ["WrapOpsOutput", "ControllerWrapOps"]
 
 class ControllerWrapOps(Ops):
     def __init__(
-        self,
-        cmd: str,
-        *args,
-        allow_options: t.List[str] = [],
-        **kwargs,
-    ):
+        self, cmd: str, *args: t.Any, allow_options: t.List[str] = [], **kwargs: t.Any
+    ) -> None:
         super().__init__(*args, **kwargs)
         self._cmd = cmd
         self._allow_options = allow_options
 
-    async def _run(self, ctr: Controller, *args: t.Any, **kwargs: t.Any) -> bool:
+    async def _run(self, ctr: Controller, *args: t.Any, **kwargs: t.Any) -> OpsOutput:
         options = {}
         for key in self._allow_options:
             if kwargs.get(key):
@@ -33,5 +29,5 @@ class ControllerWrapOps(Ops):
         return DefaultOpsOutput(value=result)
 
     @property
-    def info(self):
+    def info(self) -> str:
         return self.__class__.__name__ + ":" + self._cmd if self._name is None else self._name

@@ -1,16 +1,18 @@
 import typing as t
+from types import SimpleNamespace
+from collections.abc import Generator
+
 from juju.controller import Controller
 from juju.model import Model
 
 __all__ = ["Namespace", "flatten", "ModelFilterMixin"]
 
 
-class Namespace:
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
+class Namespace(SimpleNamespace):
+    pass
 
 
-def flatten(items):
+def flatten(items: t.List[t.Any]) -> Generator:
     """Flatten arbitrarily nested iterable items."""
     for i in items:
         if hasattr(i, "__iter__"):
@@ -21,9 +23,7 @@ def flatten(items):
 
 
 class ModelFilterMixin:
-    async def get_model_names(
-        self, ctr: Controller, models: t.Optional[t.List[str]] = []
-    ) -> t.List[str]:
+    async def get_model_names(self, ctr: Controller, models: t.List[str] = []) -> t.Set[str]:
         exists_model_names = await ctr.list_models()
         if len(models) <= 0:  # Filter not provides
             return exists_model_names

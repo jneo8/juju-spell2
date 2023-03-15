@@ -1,4 +1,4 @@
-import contextvars
+from contextvars import ContextVar
 import traceback
 import typing as t
 import dataclasses
@@ -15,12 +15,14 @@ from juju_spell.settings import Settings, WorkerSettings, CtrSettings
 
 DONE = "DONE"
 
-ctx_run_result = contextvars.ContextVar('run_result', default=None)
+ctx_run_result: ContextVar[t.Optional[t.List["RunResult"]]] = ContextVar(
+    "run_result", default=None
+)
 
 
 @dataclasses.dataclass
 class RunResult:
-    target: uuid.UUID
+    target: str
     ops: Ops
     ops_info: str
     result: OpsResult
@@ -56,14 +58,14 @@ class Worker(ModelFilterMixin):
         self.logger.debug(f"Init worker for ctr {self.ctr_uuid}")
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._id
 
     @property
-    def ctr_uuid(self):
+    def ctr_uuid(self) -> str:
         return self._settings.uuid
 
-    async def build_conn(self):
+    async def build_conn(self) -> None:
         self._ctr = Controller()
         await self._ctr._connector.connect(
             username=self._settings.user,
@@ -77,7 +79,7 @@ class Worker(ModelFilterMixin):
     async def start(
         self,
         receiver_task: t.Optional[asyncio.Task] = None,
-    ):
+    ) -> None:
         try:
             await self.build_conn()
             while True:
@@ -109,12 +111,13 @@ class Worker(ModelFilterMixin):
             await self._release_resource()
             self.logger.info("Worker finish")
 
-    async def _release_resource(self):
+    async def _release_resource(self) -> None:
         self.logger.debug("Release resource")
         if self._ctr:
             await self._ctr.disconnect()
 
-    async def _exec_ops(self, ops) -> t.List[RunResult]:
+    async def _exec_ops(self, ops: Ops) -> t.List[RunResult]:
+        results: t.List[RunResult]
         if ops.level == OpsLevel.CONTROLLER:
             result = await ops(
                 ctr=self._ctr,
@@ -125,14 +128,15 @@ class Worker(ModelFilterMixin):
             run_result = self.format_run_result(
                 target=self.ctr_uuid, ops=ops, result=result, level=OpsLevel.CONTROLLER
             )
-            return [run_result]
+            results = [run_result]
         elif ops.level == OpsLevel.MODEL:
             results = await self._loop_models(ops)
-            return results
+            results = results
+        return results
 
-    async def _loop_models(self, ops: Ops):
+    async def _loop_models(self, ops: Ops) -> t.List[RunResult]:
         results = []
-        async for model_name, model in self._model_async_generator(
+        async for model_name, model in self.model_async_generator(
             models=self._options.models, ctr=self._ctr
         ):
             self.logger.debug((model_name, ops.info))
@@ -150,7 +154,7 @@ class Worker(ModelFilterMixin):
         return results
 
     @staticmethod
-    def format_run_result(target, ops: Ops, result: OpsResult, level: OpsLevel):
+    def format_run_result(target: str, ops: Ops, result: OpsResult, level: OpsLevel) -> RunResult:
         return RunResult(target=target, ops=ops, ops_info=ops.info, result=result, level=level)
 
 
@@ -166,7 +170,7 @@ class Receiver:
         self.logger = logger.bind(id=self._id, _type="receiver")
         self.logger.debug(f"Init receiver {self._id}")
 
-    async def start(self, worker_num: int = 1):
+    async def start(self, worker_num: int = 1) -> None:
         self.logger.debug(f"Receiver Start, worker_num: {worker_num}")
         done_worker = 0
         try:
@@ -190,11 +194,11 @@ class Receiver:
             self.logger.debug("Receiver Finish")
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._id
 
     @property
-    def queue(self):
+    def queue(self) -> asyncio.Queue:
         return self._queue
 
 
@@ -214,14 +218,14 @@ class Runner:
         self.settings = settings
         self.output_handler = output_handler
 
-    def __call__(self):
+    def __call__(self) -> None:
         logger.info(f"Run parallel: {self.settings.worker.parallel}")
-        result_queue = asyncio.Queue()
+        result_queue: asyncio.Queue = asyncio.Queue()
 
         workers = []
         ops_queues = []
         for ctr_settings in self.settings.controllers:
-            ops_queue = asyncio.Queue()
+            ops_queue: asyncio.Queue = asyncio.Queue()
             worker = Worker(
                 settings=ctr_settings,
                 work_settings=self.settings.worker,
@@ -243,7 +247,9 @@ class Runner:
             logger.debug(f"Unprocessed jobs in worker {worker.id}: {ops_queue.qsize()}")
         logger.debug(f"Unprocessed jobs in receiver {receiver.id}: {result_queue.qsize()}")
 
-    async def _parallel(self, workers, receiver, ops_queues):
+    async def _parallel(
+        self, workers: t.List[Worker], receiver: Receiver, ops_queues: t.List[asyncio.Queue]
+    ) -> None:
         receiver_task = asyncio.create_task(receiver.start(len(workers)))
 
         worker_tasks = []
@@ -256,7 +262,9 @@ class Runner:
             queue.put_nowait(DONE)  # The end of ops
         await asyncio.gather(*worker_tasks, receiver_task)
 
-    async def _serial(self, workers, receiver, ops_queues):
+    async def _serial(
+        self, workers: t.List[Worker], receiver: Receiver, ops_queues: t.List[asyncio.Queue]
+    ) -> None:
         receiver_task = asyncio.create_task(receiver.start(len(workers)))
 
         for idx, worker in enumerate(workers):
