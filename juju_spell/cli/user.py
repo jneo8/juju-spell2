@@ -1,4 +1,4 @@
-import typing as t
+"""User relate cli."""
 from enum import Enum
 
 import typer
@@ -12,26 +12,29 @@ from .output import OutputHandler
 
 
 class ACL(str, Enum):
+    """Allow acl input."""
+
     # Controller ACL
-    login = "login"
-    add_model = "add-model"
-    superuser = "superuser"
+    LOGIN = "login"
+    ADD_MODEL = "add-model"
+    SUPERUSER = "superuser"
     # Model ACL
-    read = "read"
-    write = "write"
-    admin = "admin"
+    READ = "read"
+    WRITE = "write"
+    ADMIN = "admin"
 
 
 @app.command("add_user")
 def add_user(
     ctx: typer.Context,
     user: str = typer.Option(..., help="username"),
-    password: t.Optional[str] = typer.Option("", prompt=True, confirmation_prompt=True),
-    display_name: t.Optional[str] = typer.Option(None, help="display_name"),
-    models: t.List[str] = typer.Option([]),
+    password: str | None = typer.Option("", prompt=True, confirmation_prompt=True),
+    display_name: str | None = typer.Option(None, help="display_name"),
+    models: list[str] = typer.Option([]),
     acl: ACL = typer.Option(...),
     overwrite: bool = typer.Option(False),
 ) -> None:
+    """Add user and grant permission."""
     if display_name is None:
         display_name = user
 

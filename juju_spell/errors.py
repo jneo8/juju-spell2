@@ -2,4 +2,4 @@
 
 
 class JujuSpellError(Exception):
-    pass
+    """Default internal error."""

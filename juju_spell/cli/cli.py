@@ -1,7 +1,7 @@
+"""Basic typer application define."""
 import os
 import pathlib
 import sys
-import typing as t
 
 import typer
 from loguru import logger
@@ -14,9 +14,12 @@ app = typer.Typer()
 
 
 class CtxObj(BaseModel):
-    settings: t.Optional[Settings] = None
+    """Object for typer ctx."""
+
+    settings: Settings | None = None
 
     def pre_check(self) -> None:
+        """Must success pre-check."""
         assert self.settings
 
 
@@ -30,9 +33,9 @@ def common(
     container = Container()
     logger.info(f"load config file {config}")
     if config.is_file() and not os.stat(config).st_size == 0:
-        container._settings.from_yaml(config)
-    container.init_resources()
-    container.wire(modules=[__name__])
+        container._settings.from_yaml(config)  # pylint: disable=protected-access
+    container.init_resources()  # pylint: disable=no-member
+    container.wire(modules=[__name__])  # pylint: disable=no-member
 
     ctx.ensure_object(CtxObj)
     ctx.obj.settings = container.settings()

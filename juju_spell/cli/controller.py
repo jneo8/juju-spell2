@@ -1,3 +1,4 @@
+"""Controller cli."""
 import typer
 
 from juju_spell.assignment import Runner
@@ -9,6 +10,7 @@ from .cli import app
 
 @app.command("example_controller_wraps")
 def example_controller_wraps(ctx: typer.Context) -> None:
+    """Example controller wrapp compose command."""
     Runner(
         ComposeOps(
             [

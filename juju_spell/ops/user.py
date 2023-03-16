@@ -17,7 +17,6 @@ from .controller import ControllerWrapOps
 class _AddUserPrecheckOps(Ops):
     async def _run(
         self,
-        ctr: Controller,
         username: str,
         ctr_settings: CtrSettings,
         *args: t.Any,
@@ -71,7 +70,7 @@ class _GrantModelOps(Ops, ModelFilterMixin):
         self,
         ctr: Controller,
         username: str,
-        models: t.List[str],
+        models: list[str],
         acl: str,
         *args: t.Any,
         **kwargs: t.Any,
@@ -99,8 +98,7 @@ class _CreateUserOps(Ops):
         *args: t.Any,
         **kwargs: t.Any,
     ) -> User:
-        user: t.Optional[User] = await ctr.get_user(username=username)
-        if user is None:
+        if (user := await ctr.get_user(username=username)) is None:
             user = await ctr.add_user(
                 username=username,
                 password=password,

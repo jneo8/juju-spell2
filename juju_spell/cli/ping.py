@@ -1,3 +1,4 @@
+"""Ping."""
 import typer
 
 from juju_spell.assignment import Runner
@@ -10,6 +11,7 @@ from .output import OutputHandler
 
 @app.command("ping")
 def ping(ctx: typer.Context) -> None:
+    """Ping cli."""
     output_handler = OutputHandler()
     Runner(
         PingOps,

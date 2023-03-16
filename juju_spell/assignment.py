@@ -1,8 +1,9 @@
+"""Assignment."""
 import asyncio
 import dataclasses
 import traceback
-import typing as t
 import uuid
+from collections.abc import Callable
 from contextvars import ContextVar
 
 from juju.controller import Controller
@@ -14,28 +15,31 @@ from juju_spell.utils import ModelFilterMixin, Namespace
 
 DONE = "DONE"
 
-ctx_run_result: ContextVar[t.Optional[t.List["RunResult"]]] = ContextVar(
-    "run_result", default=None
-)
+ctx_run_result: ContextVar[list["RunResult"] | None] = ContextVar("run_result", default=None)
 
 
 @dataclasses.dataclass
 class RunResult:
+    """The result for a ops run on specifical target."""
+
     target: str
     ops: Ops
     ops_info: str
     result: OpsResult
     level: OpsLevel
-    id: uuid.UUID = dataclasses.field(default_factory=lambda: uuid.uuid4())
+    id: uuid.UUID = dataclasses.field(  # pylint: disable=invalid-name
+        default_factory=lambda: uuid.uuid4()  # pylint: disable=unnecessary-lambda
+    )
 
     @property
     def success(self) -> bool:
+        """Is result success?"""
         if self.ops.must_success and not self.result.success:
             return False
         return True
 
 
-class Worker(ModelFilterMixin):
+class Worker(ModelFilterMixin):  # pylint: disable=too-many-instance-attributes
     """Run worker for single controller."""
 
     def __init__(
@@ -46,9 +50,10 @@ class Worker(ModelFilterMixin):
         result_queue: asyncio.Queue,
         options: Namespace,
     ):
+        """Init."""
         self._id = uuid.uuid4().hex
         self._settings = settings
-        self._work_settings = WorkerSettings
+        self._work_settings = work_settings
         self._ops_queue = ops_queue
         self._result_queue = result_queue
         self._ctr: Controller
@@ -57,28 +62,36 @@ class Worker(ModelFilterMixin):
         self.logger.debug(f"Init worker for ctr {self.ctr_uuid}")
 
     @property
-    def id(self) -> str:
+    def id(self) -> str:  # pylint: disable=invalid-name
+        """Id."""
         return self._id
 
     @property
     def ctr_uuid(self) -> str:
+        """Controller uuid."""
         return self._settings.uuid
 
     async def build_conn(self) -> None:
+        """build connection to controller."""
         self._ctr = Controller()
-        await self._ctr._connector.connect(
+        await self._ctr._connector.connect(  # pylint: disable=protected-access
             username=self._settings.user,
             password=self._settings.password,
             endpoint=self._settings.endpoint,
             cacert=self._settings.ca_cert,
         )
-        self._ctr._connector.controller_uuid = self._settings.uuid
-        self._ctr._connector.controller_name = self._settings.name
+        self._ctr._connector.controller_uuid = (  # pylint: disable=protected-access
+            self._settings.uuid
+        )
+        self._ctr._connector.controller_name = (  # pylint: disable=protected-access
+            self._settings.name
+        )
 
     async def start(
         self,
-        receiver_task: t.Optional[asyncio.Task] = None,
+        receiver_task: asyncio.Task | None = None,
     ) -> None:
+        """Start Runner."""
         try:
             await self.build_conn()
             while True:
@@ -87,8 +100,7 @@ class Worker(ModelFilterMixin):
                 if receiver_task and receiver_task.done():
                     break
                 # Get next ops
-                ops = await self._ops_queue.get()
-                if ops is DONE:  # End of queue
+                if (ops := await self._ops_queue.get()) is DONE:  # End of queue
                     break
                 self.logger.debug(f"Get ops {ops.info}")
                 # Execute Ops
@@ -102,9 +114,9 @@ class Worker(ModelFilterMixin):
                 self._ops_queue.task_done()
         except asyncio.CancelledError:
             self.logger.debug("Cancel")
-        except Exception as e:
+        except Exception as err:
             self.logger.error(traceback.format_exc())
-            raise e
+            raise err
         finally:
             self._result_queue.put_nowait(DONE)  # Signal to tell receiver finish.
             await self._release_resource()
@@ -115,8 +127,8 @@ class Worker(ModelFilterMixin):
         if self._ctr:
             await self._ctr.disconnect()
 
-    async def _exec_ops(self, ops: Ops) -> t.List[RunResult]:
-        results: t.List[RunResult]
+    async def _exec_ops(self, ops: Ops) -> list[RunResult]:
+        results: list[RunResult]
         if ops.level == OpsLevel.CONTROLLER:
             result = await ops(
                 ctr=self._ctr,
@@ -130,10 +142,9 @@ class Worker(ModelFilterMixin):
             results = [run_result]
         elif ops.level == OpsLevel.MODEL:
             results = await self._loop_models(ops)
-            results = results
         return results
 
-    async def _loop_models(self, ops: Ops) -> t.List[RunResult]:
+    async def _loop_models(self, ops: Ops) -> list[RunResult]:
         results = []
         async for model_name, model in self.model_async_generator(
             models=self._options.models, ctr=self._ctr
@@ -154,14 +165,17 @@ class Worker(ModelFilterMixin):
 
     @staticmethod
     def format_run_result(target: str, ops: Ops, result: OpsResult, level: OpsLevel) -> RunResult:
+        """Format standard RunResult."""
         return RunResult(target=target, ops=ops, ops_info=ops.info, result=result, level=level)
 
 
 class Receiver:
+    """RunResult receiver."""
+
     def __init__(
         self,
         queue: asyncio.Queue,
-        output_handler: t.Optional[t.Callable] = None,
+        output_handler: Callable | None = None,
     ):
         self._id = uuid.uuid4().hex
         self._queue = queue
@@ -170,17 +184,16 @@ class Receiver:
         self.logger.debug(f"Init receiver {self._id}")
 
     async def start(self, worker_num: int = 1) -> None:
+        """Start receiver."""
         self.logger.debug(f"Receiver Start, worker_num: {worker_num}")
         done_worker = 0
         try:
             while True:
-                result = await self._queue.get()
-                if result is DONE:
+                if (result := await self._queue.get()) is DONE:
                     done_worker += 1
                     if done_worker == worker_num:
                         break
-                    else:
-                        continue
+                    continue
                 assert isinstance(result, RunResult)
                 if self._output_handler:
                     self._output_handler(result)
@@ -193,21 +206,28 @@ class Receiver:
             self.logger.debug("Receiver Finish")
 
     @property
-    def id(self) -> str:
+    def id(self) -> str:  # pylint: disable=invalid-name
+        """Return sele._id."""
         return self._id
 
     @property
     def queue(self) -> asyncio.Queue:
+        """Queue."""
         return self._queue
 
 
 class Runner:
+    """Runner is the entrypoint to start work and receiver.
+
+    Runner will provide both parallel and serial modes.
+    """
+
     def __init__(
         self,
-        ops: t.Union[ComposeOps, Ops],
+        ops: ComposeOps | Ops,
         settings: Settings,
-        options: t.Optional[Namespace] = None,
-        output_handler: t.Optional[t.Callable] = None,
+        options: Namespace | None = None,
+        output_handler: Callable | None = None,
     ):
         if isinstance(ops, Ops):
             ops = ComposeOps([ops])
@@ -247,7 +267,7 @@ class Runner:
         logger.debug(f"Unprocessed jobs in receiver {receiver.id}: {result_queue.qsize()}")
 
     async def _parallel(
-        self, workers: t.List[Worker], receiver: Receiver, ops_queues: t.List[asyncio.Queue]
+        self, workers: list[Worker], receiver: Receiver, ops_queues: list[asyncio.Queue]
     ) -> None:
         receiver_task = asyncio.create_task(receiver.start(len(workers)))
 
@@ -262,7 +282,7 @@ class Runner:
         await asyncio.gather(*worker_tasks, receiver_task)
 
     async def _serial(
-        self, workers: t.List[Worker], receiver: Receiver, ops_queues: t.List[asyncio.Queue]
+        self, workers: list[Worker], receiver: Receiver, ops_queues: list[asyncio.Queue]
     ) -> None:
         receiver_task = asyncio.create_task(receiver.start(len(workers)))
 
