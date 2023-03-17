@@ -28,8 +28,8 @@ class ACL(str, Enum):
 def add_user(
     ctx: typer.Context,
     user: str = typer.Option(..., help="username"),
-    password: str | None = typer.Option("", prompt=True, confirmation_prompt=True),
-    display_name: str | None = typer.Option(None, help="display_name"),
+    password: str = typer.Option("", prompt=True, confirmation_prompt=True),
+    display_name: str = typer.Option(None, help="display_name"),
     models: list[str] = typer.Option([]),
     acl: ACL = typer.Option(...),
     overwrite: bool = typer.Option(False),
