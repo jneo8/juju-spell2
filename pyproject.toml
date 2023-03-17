@@ -13,6 +13,7 @@ loguru = "^0.6.0"
 pyyaml = "^6.0"
 typer = "^0.7.0"
 juju = "2.9.11"
+pyproject-flake8 = "^6.0.0.post1"
 
 [tool.poetry.dev-dependencies]
 mypy = "^1.1.1"

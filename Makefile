@@ -14,8 +14,8 @@ lint:  ## Run linter
 	poetry run isort --check --diff --color .
 
 lint-format:  ## Format
-	poetry run black  --diff --color .
-	poetry run isort  --diff --color .
+	poetry run black  --color .
+	poetry run isort  --color .
 
 .PHONY: lint lint-format
 

@@ -1,4 +1,5 @@
 """User relate cli."""
+import typing as t
 from enum import Enum
 
 import typer
@@ -29,7 +30,9 @@ def add_user(
     ctx: typer.Context,
     user: str = typer.Option(..., help="username"),
     password: str = typer.Option("", prompt=True, confirmation_prompt=True),
-    display_name: str = typer.Option(None, help="display_name"),
+    display_name: t.Optional[  # pylint: disable=consider-alternative-union-syntax
+        str
+    ] = typer.Option(None, help="display_name"),
     models: list[str] = typer.Option([]),
     acl: ACL = typer.Option(...),
     overwrite: bool = typer.Option(False),
@@ -51,5 +54,6 @@ def add_user(
             models=models,
         ),
         output_handler=output_handler.call,
+        confirm=True,
     )()
     output_handler.print()

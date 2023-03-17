@@ -1,11 +1,13 @@
 """Assignment."""
 import asyncio
 import dataclasses
+import os
 import traceback
 import uuid
 from collections.abc import Callable
 from contextvars import ContextVar
 
+import typer
 from juju.controller import Controller
 from loguru import logger
 
@@ -228,6 +230,7 @@ class Runner:
         settings: Settings,
         options: Namespace | None = None,
         output_handler: Callable | None = None,
+        confirm: bool = False,
     ):
         if isinstance(ops, Ops):
             ops = ComposeOps([ops])
@@ -236,6 +239,7 @@ class Runner:
         self.options = Namespace() if options is None else options
         self.settings = settings
         self.output_handler = output_handler
+        self.confirm = confirm
 
     def __call__(self) -> None:
         logger.info(f"Run parallel: {self.settings.worker.parallel}")
@@ -256,6 +260,9 @@ class Runner:
             ops_queues.append(ops_queue)
         receiver = Receiver(result_queue, output_handler=self.output_handler)
 
+        if not self._confirm():
+            return
+
         if self.settings.worker.parallel:
             asyncio.run(self._parallel(workers, receiver, ops_queues))
         if not self.settings.worker.parallel:
@@ -265,6 +272,20 @@ class Runner:
         for worker, ops_queue in zip(workers, ops_queues):
             logger.debug(f"Unprocessed jobs in worker {worker.id}: {ops_queue.qsize()}")
         logger.debug(f"Unprocessed jobs in receiver {receiver.id}: {result_queue.qsize()}")
+
+    def _confirm(self) -> bool:
+        """Confrim before start."""
+        if not self.confirm:
+            return True
+        planning = os.linesep.join(
+            [
+                "Planning",
+                f"Ops: {[ops.info for ops in self.compose_ops]}",
+                f"Target: {[ctr_settings.uuid for ctr_settings in self.settings.controllers]}",
+                "Confirm?",
+            ]
+        )
+        return typer.confirm(planning)
 
     async def _parallel(
         self, workers: list[Worker], receiver: Receiver, ops_queues: list[asyncio.Queue]
