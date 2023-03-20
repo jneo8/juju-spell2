@@ -6,9 +6,9 @@ from juju.errors import JujuError
 from juju.user import User
 from loguru import logger
 
+from juju_spell.assignment.utils import ModelMixin
 from juju_spell.errors import JujuSpellError
 from juju_spell.settings import CtrSettings
-from juju_spell.utils import ModelFilterMixin
 
 from .base import ComposeOps, Ops
 from .controller import ControllerWrapOps
@@ -55,7 +55,7 @@ class _GrantControllerOps(Ops):
 GrantControllerOps: Ops = _GrantControllerOps()
 
 
-class _GrantModelOps(Ops, ModelFilterMixin):
+class _GrantModelOps(Ops, ModelMixin):
     def get_model_acl(self, acl: str) -> str:
         """Get corresponding model acl from input acl."""
         if acl in ["admin", "read", "write"]:

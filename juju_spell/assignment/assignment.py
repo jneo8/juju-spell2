@@ -13,7 +13,9 @@ from loguru import logger
 
 from juju_spell.ops import ComposeOps, Ops, OpsLevel, OpsResult
 from juju_spell.settings import CtrSettings, Settings, WorkerSettings
-from juju_spell.utils import ModelFilterMixin, Namespace
+from juju_spell.utils import Namespace
+
+from .utils import ModelMixin
 
 DONE = "DONE"
 
@@ -41,7 +43,7 @@ class RunResult:
         return True
 
 
-class Worker(ModelFilterMixin):  # pylint: disable=too-many-instance-attributes
+class Worker(ModelMixin):  # pylint: disable=too-many-instance-attributes
     """Run worker for single controller."""
 
     def __init__(
